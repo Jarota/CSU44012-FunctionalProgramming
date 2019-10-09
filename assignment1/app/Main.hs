@@ -2,13 +2,14 @@ module Main where
 
 import Lib
 import System.Random
+import System.Environment
 
 main :: IO ()
 main = do
     g <- getStdGen
-    let list = take 20 (randomRs (0, 20) g :: [Int])
+    let list = take 10000 (randomRs (0, 1000) g :: [Int])
     print list
-    let quicksorted = quickSort list
-    print quicksorted
-    let mergesorted = mergeSort list
-    print mergesorted
+    let sorted = mergeSort list
+    print sorted
+
+-- ./.stack-work/dist/x86_64-linux-tinfo6/Cabal-2.4.0.1/build/assignment1-exe/assignment1-exe +RTS -ls -N4

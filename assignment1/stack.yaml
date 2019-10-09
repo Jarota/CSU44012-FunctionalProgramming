@@ -19,6 +19,15 @@
 # resolver: https://example.com/snapshots/2018-01-01.yaml
 resolver: lts-14.7
 
+rebuild-ghc-options: true
+
+ghc-options:
+    # All packages
+    "$locals": -Wall
+    "$targets": -Werror
+    "$everything": -O2
+    assignment1: -threaded -eventlog -rtsopts
+
 # User packages to be built.
 # Various formats can be used as shown in the example below.
 #
