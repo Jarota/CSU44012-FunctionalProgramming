@@ -2,7 +2,6 @@ module Main where
 
 import Lib
 import System.Random
-import System.Environment
 
 main :: IO ()
 main = do
