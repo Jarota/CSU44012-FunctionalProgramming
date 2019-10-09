@@ -4,9 +4,11 @@ module Lib
     mergeSort,
     mergeSortPar,
     mergeSortParPseq,
+    mergeSortLimitThreads,
     quickSort,
     quickSortPar,
-    quickSortParPseq
+    quickSortParPseq,
+    quickSortLimitThreads
     ) where
 
 import Control.Parallel
@@ -44,6 +46,15 @@ mergeSortParPseq xs
           highs = mergeSortParPseq rs
           (ls, rs) = split xs
 
+mergeSortLimitThreads :: (Ord a) => Integer -> [a] -> [a]
+mergeSortLimitThreads 0 xs = mergeSort xs
+mergeSortLimitThreads d xs
+    | (length xs) > 1 = par lows (pseq highs (merge (lows) (highs)))
+    | otherwise = xs
+    where lows = mergeSortLimitThreads (d-1) ls
+          highs = mergeSortLimitThreads (d-1) rs
+          (ls, rs) = split xs
+
 quickSort :: (Ord a) => [a] -> [a]
 quickSort [] = []
 quickSort (x:xs) = quickSort [y | y <- xs, y <= x] ++ [x] ++ quickSort [y | y <- xs, y > x]
@@ -59,3 +70,10 @@ quickSortParPseq [] = []
 quickSortParPseq (x:xs) = par lows (pseq highs (lows ++ [x] ++ highs))
                        where lows = quickSortParPseq [y | y <- xs, y <= x]
                              highs = quickSortParPseq [y | y <- xs, y > x]
+
+quickSortLimitThreads :: (Ord a) => Integer -> [a] -> [a]
+quickSortLimitThreads _ [] = []
+quickSortLimitThreads 0 xs = quickSort xs
+quickSortLimitThreads d (x:xs) = par lows (pseq highs (lows ++ [x] ++ highs))
+                       where lows = quickSortLimitThreads (d-1) [y | y <- xs, y <= x]
+                             highs = quickSortLimitThreads (d-1) [y | y <- xs, y > x]
