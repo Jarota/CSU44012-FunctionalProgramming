@@ -4,6 +4,8 @@ import Lib
 
 main :: IO ()
 main = do
-    let bombs = genBombCoords (10, 10) 0
-    let grid = buildGrid (10, 10) bombs
+    let dimensions = (5, 5)
+    let bombs = makeBombList dimensions 5
+    print bombs
+    let grid = buildGrid dimensions bombs
     print grid
