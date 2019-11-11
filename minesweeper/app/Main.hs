@@ -4,8 +4,7 @@ import Lib
 
 main :: IO ()
 main = do
-    let dimensions = (5, 5)
-    let bombs = makeBombList dimensions 5
-    print bombs
-    let grid = buildGrid dimensions bombs
-    print grid
+    let dimensions = (2, 2)
+    let bombs = makeBombList dimensions 1
+    let board = Board dimensions bombs [] [] -- dimensions, bombs, flags, cleared
+    play board
