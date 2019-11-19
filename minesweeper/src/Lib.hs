@@ -1,15 +1,26 @@
-module Lib ( BoardState (..), play, gameOver, printBoard, validMove, makeMove, makeBombList, genBombCoords, convertToCoords ) where
+module Lib ( Square (..), GameState (..), BoardState (..), play, printBoard, validMove, makeMove, makeBombList) where
 
 import Data.Array
 import Data.List
 import Data.Char
 import System.Random
 
+data Square = Bomb      -- a bomb is in the square
+            | Flag      -- a flag has been placed in the square
+            | Clear Int -- the square has been cleared and has Int number of bombs around it
+            | Empty     -- the square is empty
+            deriving (Eq, Show)
 
-data BoardState = Board (Int, Int) [(Int, Int)] [(Int, Int)] [(Int, Int)]
+data GameState  = Playing
+                | Win
+                | Lose
+
+-- The dimensions of the board and a list of Squares, as well as the current state of the game
+data BoardState = Board (Int, Int) [Square] GameState
 
 play :: BoardState -> IO ()
-play board | gameOver board = putStrLn "Game Over!"
+play (Board _ _ Lose) = putStrLn "You Lose!"
+play (Board _ _ Win) = putStrLn "You Win!"
 
 play board = do
     printBoard board
@@ -22,9 +33,8 @@ play board = do
         else
             play (makeMove board move)
 
-
 printBoard :: BoardState -> IO ()
-printBoard (Board dims bombs flags cleared) = do
+printBoard (Board (r,c) squares _) = do
     putStrLn "Here is the board..."
 
 
@@ -39,61 +49,56 @@ validMove move  | len /= 6 = False
 
 
 makeMove :: BoardState -> String -> BoardState
-makeMove (Board dimensions bombs flags cleared) move
-            | action == 'f' = Board dimensions bombs (coord:flags) cleared
-            | action == 'c' = Board dimensions bombs flags (coord:cleared)
+makeMove (Board (r, c) squares _) move = 
+            | action == 'c' = Board (r, c) (clearSquare squares index) (Playing)
+            | action == 'f' = Board (r, c) (flagSqaure squares index) (Playing)
             where
                 action = head move
-                coord = ((digitToInt (move!!2)), (digitToInt (move!!4)))
+                (i, j) = ((digitToInt (move!!2)), (digitToInt (move!!4)))
+                index = (i*r)+j
+
+clearSquare :: [Square] -> Int -> [Square]
 
 
-gameOver :: BoardState -> Bool
-gameOver (Board _ bombs _ cleared)  | length (intersect bombs cleared) /= 0 = True
-                                    | otherwise = False
-
-
-
-makeBombList :: (Int, Int) -> Int -> [(Int, Int)]
+setSquare :: [Square] -> Int -> Square -> [Square]
 {-
     Input:
-        A tuple with the number of rows and columns in the grid
-        The number of bomb coordinates to generate
+        A list of Squares
+        An index
+        A new Square
 
     Output:
-        A list of bomb coordinates
+        A list of Squares with the square at the index has been set to the new Square
 -}
-makeBombList dimensions numBombs = genBombCoords dimensions numBombs []
+setSquare squares i newSquare = let (ys,zs) = splitAt i-1 squares in
+                                ys ++ newSquare ++ tail zs
 
-genBombCoords :: (Int, Int) -> Int -> [(Int, Int)] -> [(Int, Int)]
+
+makeBombList :: (Int, Int) -> Int -> [Int]
 {-
     Input:
         A tuple with the number of rows and columns in the grid
+        The number of bombs to generate
+
+    Output:
+        A list of bomb indices
+-}
+makeBombList (r, c) numBombs = makeBombs (r*c) numBombs []
+
+makeBombs :: Int -> Int -> [Int] -> [Int]
+{-
+    Input:
+        A maximum index
         The number of bombs left to generate
         A list of the bombs so far
 
     Output:
-        A list of bomb coordinates
+        A list of bomb indices
 -}
-genBombCoords (r, c) n bombsSoFar
+genBombCoords maxIndex n bombsSoFar
                             | numBombs >= n = take n bombsSoFar
-                            | otherwise = genBombCoords (r, c) n ( nub (newBombs ++ bombsSoFar) )
+                            | otherwise = genBombCoords maxIndex n ( nub (newBombs ++ bombsSoFar) )
                             where
                                 numBombs = length bombsSoFar
                                 g = mkStdGen numBombs
-                                max = (r*c) - 1
-                                newBombs = convertToCoords (take n (randomRs (0, max) g)) (r, c)
-
-convertToCoords :: [Int] -> (Int, Int) -> [(Int, Int)]
-{-
-    Input:
-        A list of numbers
-        A tuple containing the bounds of the grid
-
-    Output:
-        A list of tuples that are the coordinates the input list corresponds to
--}
-convertToCoords [] _ = []
-convertToCoords (x:xs) (r, c) = (i, j):(convertToCoords xs (r, c))
-                        where
-                            i = 1 + div x c
-                            j = 1 + rem x r
+                                newBombs =  take n (randomRs (0, maxIndex) g)
