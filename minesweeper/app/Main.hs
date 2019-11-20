@@ -4,7 +4,19 @@ import Lib
 
 main :: IO ()
 main = do
-    let dimensions = (2, 2)
-    let bombs = makeBombList dimensions 1
-    let board = Board dimensions bombs [] [] -- dimensions, bombs, flags, cleared
-    play board
+    putStrLn "How many rows?"
+    rows <- getLine
+    let r = read rows
+
+    putStrLn "How many columns?"
+    cols <- getLine
+    let c = read cols
+
+    putStrLn "How many bombs?"
+    bombs <- getLine
+    let numBombs = read bombs
+
+    let board = makeBoard (r, c) numBombs
+    let game = GS board numBombs Playing
+
+    play game

@@ -1,104 +1,83 @@
-module Lib ( Square (..), GameState (..), BoardState (..), play, printBoard, validMove, makeMove, makeBombList) where
+module Lib ( GameState (..), Condition (..), play, makeBoard ) where
 
-import Data.Array
-import Data.List
 import Data.Char
-import System.Random
+import Board
 
-data Square = Bomb      -- a bomb is in the square
-            | Flag      -- a flag has been placed in the square
-            | Clear Int -- the square has been cleared and has Int number of bombs around it
-            | Empty     -- the square is empty
-            deriving (Eq, Show)
-
-data GameState  = Playing
+data Condition  = Playing
                 | Win
                 | Lose
-
--- The dimensions of the board and a list of Squares, as well as the current state of the game
-data BoardState = Board (Int, Int) [Square] GameState
-
-play :: BoardState -> IO ()
-play (Board _ _ Lose) = putStrLn "You Lose!"
-play (Board _ _ Win) = putStrLn "You Win!"
-
-play board = do
-    printBoard board
-    putStrLn "What is your move? f(i,j) / c(i,j)"
-    move <- getLine
-    if not (validMove move)
-        then do
-            putStrLn "That is not a valid move."
-            play board
-        else
-            play (makeMove board move)
-
-printBoard :: BoardState -> IO ()
-printBoard (Board (r,c) squares _) = do
-    putStrLn "Here is the board..."
-
-
-validMove :: String -> Bool
-validMove move  | len /= 6 = False
-                | action == 'f' = True
-                | action == 'c' = True
-                | otherwise = False
-                where
-                    action = head move
-                    len = length move
-
-
-makeMove :: BoardState -> String -> BoardState
-makeMove (Board (r, c) squares _) move = 
-            | action == 'c' = Board (r, c) (clearSquare squares index) (Playing)
-            | action == 'f' = Board (r, c) (flagSqaure squares index) (Playing)
-            where
-                action = head move
-                (i, j) = ((digitToInt (move!!2)), (digitToInt (move!!4)))
-                index = (i*r)+j
-
-clearSquare :: [Square] -> Int -> [Square]
-
-
-setSquare :: [Square] -> Int -> Square -> [Square]
 {-
-    Input:
-        A list of Squares
-        An index
-        A new Square
-
-    Output:
-        A list of Squares with the square at the index has been set to the new Square
+    GameState comprises of:
+        The Board
+        Number of flags left
+        The current condition of the game
 -}
-setSquare squares i newSquare = let (ys,zs) = splitAt i-1 squares in
-                                ys ++ newSquare ++ tail zs
+data GameState = GS Board Int Condition
+
+data Move   = ClearSquare Int
+            | FlagSqaure Int
+            | Invalid
+            deriving Eq
+
+play :: GameState -> IO ()
+play (GS _ _ Lose) = putStrLn "You Lose!"
+play (GS _ _ Win) = putStrLn "You Win!"
+
+play (GS board flagsLeft _) = do
+        printGame (GS board flagsLeft Playing)
+        putStrLn "What is your move? f(i,j) / c(i,j)"
+        moveString <- getLine
+        let move = stringToMove board moveString
+        if move == Invalid
+            then do
+                putStrLn "That is not a valid move."
+                play (GS board flagsLeft Playing)
+            else
+                play (makeMove (GS board flagsLeft Playing) move)
+
+printGame :: GameState -> IO ()
+printGame (GS board flagsLeft _) = putStrLn gameString
+        where
+            boardString = buildBoardString board
+            gameString = "You have " ++ (show flagsLeft) ++ " flags left.\n" ++ boardString
 
 
-makeBombList :: (Int, Int) -> Int -> [Int]
-{-
-    Input:
-        A tuple with the number of rows and columns in the grid
-        The number of bombs to generate
+stringToMove :: Board -> String -> Move
+stringToMove (Board (r, c) _) moveString
+        | (length moveString) /= 6  = Invalid
+        | index == 0                = Invalid
+        | action == 'f'             = FlagSqaure index
+        | action == 'c'             = ClearSquare index
+        | otherwise                 = Invalid
+        where
+            action = head moveString
+            i = digitToInt (moveString!!2)
+            j = digitToInt (moveString!!4)
+            index = validIndex (r, c) (i, j)
 
-    Output:
-        A list of bomb indices
--}
-makeBombList (r, c) numBombs = makeBombs (r*c) numBombs []
+validIndex :: (Int, Int) -> (Int, Int) -> Int
+validIndex (r, c) (i, j)
+        | i <= r && i > 0 && j <= c && j > 0    = (i*r) + j
+        | otherwise                             = 0
 
-makeBombs :: Int -> Int -> [Int] -> [Int]
-{-
-    Input:
-        A maximum index
-        The number of bombs left to generate
-        A list of the bombs so far
+makeMove :: GameState -> Move -> GameState
+makeMove game (ClearSquare i) = clearSquare game i
+makeMove game (FlagSqaure i)  = flagSquare game i
 
-    Output:
-        A list of bomb indices
--}
-genBombCoords maxIndex n bombsSoFar
-                            | numBombs >= n = take n bombsSoFar
-                            | otherwise = genBombCoords maxIndex n ( nub (newBombs ++ bombsSoFar) )
-                            where
-                                numBombs = length bombsSoFar
-                                g = mkStdGen numBombs
-                                newBombs =  take n (randomRs (0, maxIndex) g)
+clearSquare :: GameState -> Int -> GameState
+clearSquare (GS board flagsLeft _) i
+        | prevSquare == Bomb      = GS board flagsLeft Lose
+        | prevSquare == Covered   = GS (setSquare board i newSquare) flagsLeft Playing
+        | otherwise         = GS board flagsLeft Playing
+        where
+            prevSquare = squareAt board i
+            newSquare = Clear (bombsTouching board i)
+
+flagSquare :: GameState -> Int -> GameState
+flagSquare (GS board flagsLeft _) i
+        | prevSquare == Bomb    = newGameState
+        | prevSquare == Covered = newGameState
+        | otherwise             = GS board flagsLeft Playing
+        where
+            prevSquare = squareAt board i
+            newGameState = GS (setSquare board i Flag) (flagsLeft-1) Playing
