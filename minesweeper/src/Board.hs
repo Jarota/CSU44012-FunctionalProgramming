@@ -1,7 +1,13 @@
-module Board (Square (..), Board (..), buildBoardString, bombsInList, adjI, makeBoard, setSquare, squareAt, checkForWin) where
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
+
+module Board (Square (..), Board (..), boardToHtml, bombsInList, adjI, makeBoard, setSquare, squareAt, checkForWin) where
 
 import System.Random
 import Data.List
+import Data.Aeson.TH (deriveJSON, defaultOptions)
+import Text.Blaze.Html5
+import Text.Blaze.Html5.Attributes
 
 data Square = Bomb      -- a bomb is in the square
             | Empty     -- the square is Empty i.e. untouched so far
@@ -10,8 +16,19 @@ data Square = Bomb      -- a bomb is in the square
             | Clear Int -- the square has been cleared and has Int number of bombs around it
             deriving (Eq, Show)
 
+$(deriveJSON defaultOptions ''Square)
+
 -- board dimensions and corresponding list of squares
 data Board = Board (Int, Int) [Square]
+
+$(deriveJSON defaultOptions ''Board)
+
+
+-- boardToHtml :: Board ->
+boardToHtml (Board (r, c) squares) = table $ tr $ td $ "AYOO"
+    {- TODO imlpement converting the board into html -}
+
+
 
 buildBoardString :: Board -> String
 buildBoardString (Board (r, c) squares) = buildBoardString' c ((r*c)-1) squares
@@ -27,7 +44,6 @@ buildBoardString' c i squares   | i == 0            = s
                                 where
                                     next = buildBoardString' c (i-1) squares
                                     s    = squareString (squares!!i)
-                                    -- s    = show (squares!!i) -- for debugging
 
 squareString :: Square -> String
 squareString (Clear x)
