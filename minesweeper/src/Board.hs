@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Board (Square (..), Board (..), boardToHtml, bombsInList, adjI, makeBoard, setSquare, squareAt, checkForWin) where
+module Board (Square (..), Board (..), boardToHtml, bombsInList, adjI, makeBoard, setSquare, squareAt, checkForWin') where
 
 import System.Random
 import Data.List
@@ -25,33 +25,27 @@ $(deriveJSON defaultOptions ''Board)
 
 
 -- boardToHtml :: Board ->
-boardToHtml (Board (r, c) squares) = table $ tr $ td $ "AYOO"
-    {- TODO imlpement converting the board into html -}
+boardToHtml (Board (r, c) squares) = table $ rowsToHtml (r, c) squares 0
 
+-- rowsToHtml :: dimension squares currentIndex
+rowsToHtml (r, c) squares i | i == r*c  = return ()
+                            | otherwise = do
+                                            tr $ dataToHtml c squares i
+                                            rowsToHtml (r, c) squares (i+c)
 
+dataToHtml c squares i  | i `mod` c == c-1 = s
+                        | otherwise         = do
+                                                s
+                                                dataToHtml c squares (i+1)
+                        where
+                            s = squareToHtml (squares!!i)
 
-buildBoardString :: Board -> String
-buildBoardString (Board (r, c) squares) = buildBoardString' c ((r*c)-1) squares
-
-{-
-    Takes in the length of a row, the current index, and a list of squares
-    Outputs a string
--}
-buildBoardString' :: Int -> Int -> [Square] -> String
-buildBoardString' c i squares   | i == 0            = s
-                                | i `mod` c == 0    = next ++ "\n" ++ s
-                                | otherwise         = next ++ s
-                                where
-                                    next = buildBoardString' c (i-1) squares
-                                    s    = squareString (squares!!i)
-
-squareString :: Square -> String
-squareString (Clear x)
-    | x == 0            = " "
-    | otherwise         = show x
-squareString FlagE      = "F"
-squareString FlagB      = "F"
-squareString _          = "."
+squareToHtml (Clear x)
+    | x /= 0            = td ! class_ "clearNum" $ toHtml $ show x
+    | otherwise         = td ! class_ "clear" $ toHtml $ (" " :: String)
+squareToHtml FlagE      = td ! class_ "flag" $ toHtml $ ("F" :: String)
+squareToHtml FlagB      = td ! class_ "flag" $ toHtml $ ("F" :: String)
+squareToHtml _          = td ! class_ "empty" $ toHtml $ (" " :: String)
 
 {-
     Takes in a board and an index
@@ -131,5 +125,5 @@ makeBombList' maxIndex n bombsSoFar
                 newBombs =  take n (randomRs (0, maxIndex-1) g)
 
 
-checkForWin :: Board -> Bool
-checkForWin (Board _ squares) = (Empty `notElem` squares) && (FlagE `notElem` squares)
+checkForWin' :: Board -> Bool
+checkForWin' (Board _ squares) = (Empty `notElem` squares) && (FlagE `notElem` squares)

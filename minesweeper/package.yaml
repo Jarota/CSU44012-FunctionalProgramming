@@ -26,7 +26,8 @@ dependencies:
 - blaze-html
 - aeson
 - bytestring
-#- maybe
+- wai-middleware-static
+- wai-extra
 
 library:
   source-dirs: src

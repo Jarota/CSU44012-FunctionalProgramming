@@ -22,11 +22,15 @@ data Move   = ClearSquare Int
             deriving Eq
 
 play :: GameState -> Move -> GameState
-play (GS board flagsLeft) move
-        | checkForWin board = Won
-        | otherwise         = do
-                    makeMove (GS board flagsLeft) move
+play game move
+        | checkForWin newGame   = Won
+        | otherwise             = newGame
+        where
+            newGame = makeMove game move
 
+checkForWin (GS board flagsLeft)    = checkForWin' board
+checkForWin Won                     = True
+checkForWin Lost                    = False
 
 coordToIndex :: GameState -> (Int, Int) -> Int
 coordToIndex (GS (Board dims _) _) coord = coordToIndex' dims coord
@@ -83,7 +87,9 @@ flagSquare (GS board flagsLeft) i
             prevSquare = squareAt board i
 
 -- gameStateToHtml :: GameState ->
-gameStateToHtml (GS board flagsLeft) = H.div $ do
+gameStateToHtml Lost                    = h1 "No Game State"
+gameStateToHtml Won                     = h1 "No Game State"
+gameStateToHtml (GS board flagsLeft)    = H.div $ do
     "Flags left: "
     toHtml flagsLeft
     br

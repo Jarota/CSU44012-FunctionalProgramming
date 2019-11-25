@@ -4,8 +4,9 @@ module Main where
 import Lib
 import qualified Layout
 
-import Control.Monad.IO.Class
-
+import Control.Monad.IO.Class (liftIO)
+import Network.Wai.Middleware.Static
+import Network.Wai.Middleware.RequestLogger
 import Web.Scotty as S
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
@@ -20,54 +21,59 @@ blaze = S.html . renderHtml
 
 main :: IO ()
 main = scotty 3000 $ do
+    middleware logStdoutDev
+    middleware $ staticPolicy (addBase "static")
     get "/" $ do
         blaze Layout.root
 
-    get "/play" $ do
+    get "/new" $ do
         rStr <- param "rows"
         cStr <- param "cols"
         bombsStr <- param "bombs"
-        let r = read rStr
-        let c = read cStr
+        let dims = parseCoord rStr cStr
         let bombs = read bombsStr
-        let game = GS (makeBoard (r, c) bombs) bombs
+        let game = GS (makeBoard dims bombs) bombs
         let gameHtml = gameStateToHtml game
         blaze (Layout.play gameHtml) -- pass the html for displaying the grid
         storeGameState game
 
-    get "/play/flag" $ do
+    get "/flag" $ do
         iStr <- param "i"
         jStr <- param "j"
-        let i = read iStr
-        let j = read jStr
+        let coord = parseCoord iStr jStr
         gameJSON <- loadGameState
         let game = fromMaybe Lost (decode gameJSON :: Maybe GameState)
-        let index = coordToIndex game (i, j)
+        let index = coordToIndex game coord
         let move = FlagSquare index
         let newGame = play game move
         renderGame newGame
+        storeGameState newGame
 
-    get "/play/clear" $ do
+    get "/clear" $ do
         iStr <- param "i"
         jStr <- param "j"
-        let i = read iStr
-        let j = read jStr
+        let coord = parseCoord iStr jStr
         gameJSON <- loadGameState
         let game = fromMaybe Lost (decode gameJSON :: Maybe GameState)
-        let index = coordToIndex game (i, j)
+        let index = coordToIndex game coord
         let move = ClearSquare index
         let newGame = play game move
         renderGame newGame
+        storeGameState newGame
 
 
 
 loadGameState = liftIO ( BL.readFile "game.json" )
 storeGameState game = liftIO ( BL.writeFile "game.json" (encode game) )
 
--- renderGame :: GameState ->
-renderGame Lost = blaze Layout.lost
-renderGame Won  = blaze Layout.won
+parseCoord iStr jStr = (i, j)
+    where
+        i = read iStr
+        j = read jStr
+
 renderGame game = do
     let gameHtml = gameStateToHtml game
-    blaze (Layout.play gameHtml)
-    storeGameState game
+    case game of
+        Lost    -> blaze Layout.lost
+        Won     -> blaze Layout.won
+        _       -> blaze (Layout.play gameHtml)
