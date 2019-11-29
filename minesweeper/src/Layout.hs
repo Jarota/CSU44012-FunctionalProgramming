@@ -24,6 +24,8 @@ play gridHtml = do
                 newGameButton
                 br
                 controlsForm
+                autoMoveButton
+                br
                 gridHtml
 
 lost = do
@@ -59,6 +61,7 @@ textField s = input ! type_ "text" ! name s
 submitButton s = input ! type_ "submit" ! value s
 
 newGameButton = button ! onclick "window.location.href='/'" ! type_ "button" $ "New Game"
+autoMoveButton = button ! onclick "window.location.href='/auto'" ! type_ "button" $ "Auto Move"
 
 newGameForm = H.form ! action "/new" $ do
     "Number of Rows"

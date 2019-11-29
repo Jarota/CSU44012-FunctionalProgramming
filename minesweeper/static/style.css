@@ -1,12 +1,14 @@
 body {
-    margin-top: 10%;
+    margin-top: 2%;
 }
 
 H1 {text-align: center;}
 
 td {
     border: 1px solid black;
-    padding: 10px;
+    padding: 5px;
+    height: 10px;
+    width: 10px;
     text-align: center;
     font-size: larger;
 }
@@ -20,9 +22,6 @@ td {
     background-color: #fe7;
 }
 
-table {
-    width: 100%;
-}
 
 .main {
     margin: auto;

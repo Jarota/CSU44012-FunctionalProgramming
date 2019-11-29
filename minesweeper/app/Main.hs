@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
+import Bot
 import Lib
 import qualified Layout
 
@@ -42,7 +43,7 @@ main = scotty 3000 $ do
         jStr <- param "j"
         let coord = parseCoord iStr jStr
         gameJSON <- loadGameState
-        let game = fromMaybe Lost (decode gameJSON :: Maybe GameState)
+        let game = jsonToData gameJSON
         let index = coordToIndex game coord
         let move = FlagSquare index
         let newGame = play game move
@@ -54,13 +55,21 @@ main = scotty 3000 $ do
         jStr <- param "j"
         let coord = parseCoord iStr jStr
         gameJSON <- loadGameState
-        let game = fromMaybe Lost (decode gameJSON :: Maybe GameState)
+        let game = jsonToData gameJSON
         let index = coordToIndex game coord
         let move = ClearSquare index
         let newGame = play game move
         renderGame newGame
         storeGameState newGame
 
+    get "/auto" $ do
+        gameJSON <- loadGameState
+        let game = jsonToData gameJSON
+        let auto = autoMove game
+        -- liftIO ( putStrLn $ show auto ) -- for debugging
+        let newGame = play game auto
+        renderGame newGame
+        storeGameState newGame
 
 
 loadGameState = liftIO ( BL.readFile "game.json" )
@@ -70,6 +79,8 @@ parseCoord iStr jStr = (i, j)
     where
         i = read iStr
         j = read jStr
+
+jsonToData gameJSON = fromMaybe Lost (decode gameJSON :: Maybe GameState)
 
 renderGame game = do
     let gameHtml = gameStateToHtml game

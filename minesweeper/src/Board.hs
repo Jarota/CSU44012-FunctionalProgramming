@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Board (Square (..), Board (..), boardToHtml, bombsInList, adjI, makeBoard, setSquare, squareAt, checkForWin') where
+module Board (Square (..), Board (..), boardToHtml, clearNum, bombsInList, adjI, subsetOfSquares, makeBoard, setSquare, squareAt, checkForWin') where
 
 import System.Random
 import Data.List
@@ -14,6 +14,8 @@ data Square = Bomb      -- a bomb is in the square
             | FlagB     -- a flag has been placed on a bomb
             | FlagE     -- a flag has been placed on an empty square
             | Clear Int -- the square has been cleared and has Int number of bombs around it
+            | Unknown   -- constructor for the bot
+            | Flag      -- constructor for the bot
             deriving (Eq, Show)
 
 $(deriveJSON defaultOptions ''Square)
@@ -45,7 +47,14 @@ squareToHtml (Clear x)
     | otherwise         = td ! class_ "clear" $ toHtml $ (" " :: String)
 squareToHtml FlagE      = td ! class_ "flag" $ toHtml $ ("F" :: String)
 squareToHtml FlagB      = td ! class_ "flag" $ toHtml $ ("F" :: String)
+-- squareToHtml Bomb       = td ! class_ "bomb" $ toHtml $ ("B" :: String) -- for debugging
 squareToHtml _          = td ! class_ "empty" $ toHtml $ (" " :: String)
+
+
+clearNum :: Square -> Int
+clearNum (Clear x)  = x
+clearNum _          = 9 -- invalid
+
 
 {-
     Takes in a board and an index

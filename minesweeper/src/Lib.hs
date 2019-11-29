@@ -19,7 +19,8 @@ $(deriveJSON defaultOptions ''GameState)
 
 data Move   = ClearSquare Int
             | FlagSquare Int
-            deriving Eq
+            | Invalid
+            deriving (Eq, Show)
 
 play :: GameState -> Move -> GameState
 play game move
@@ -40,8 +41,9 @@ coordToIndex' (r, c) (i, j) = (i*c) + j
 
 
 makeMove :: GameState -> Move -> GameState
-makeMove game (ClearSquare i) = clearSquare game i
-makeMove game (FlagSquare i)  = flagSquare game i
+makeMove game (ClearSquare i)   = clearSquare game i
+makeMove game (FlagSquare i)    = flagSquare game i
+makeMove game Invalid           = game
 
 clearSquare :: GameState -> Int -> GameState
 clearSquare (GS (Board (r, c) squares) flagsLeft) i
