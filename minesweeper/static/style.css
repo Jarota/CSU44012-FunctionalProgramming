@@ -1,0 +1,26 @@
+body {
+    margin-top: 2%;
+}
+
+H1 {text-align: center;}
+
+td {
+    border: 1px solid black;
+    padding: 15px;
+    text-align: center;
+    font-size: large;
+}
+.clear {
+    background-color: #ddd;
+}
+.clearNum {
+    background-color: #efe;
+}
+.flag {
+    background-color: #fe7;
+}
+
+.main {
+    margin: auto;
+    width: 60%;
+}

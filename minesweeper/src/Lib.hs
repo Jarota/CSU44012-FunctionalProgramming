@@ -1,99 +1,97 @@
-module Lib ( BoardState (..), play, gameOver, printBoard, validMove, makeMove, makeBombList, genBombCoords, convertToCoords ) where
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 
-import Data.Array
-import Data.List
+module Lib ( GameState (..), Move (..), play, coordToIndex, gameStateToHtml, makeBoard ) where
+
 import Data.Char
-import System.Random
+import Data.Aeson.TH (deriveJSON, defaultOptions)
+
+import Text.Blaze.Html5 as H
+import Text.Blaze.Html5.Attributes
+
+import Board
+
+data GameState  = GS Board Int  -- a board with a number of flags left
+                | Won           -- the game has been won
+                | Lost          -- the game has been lost
+
+$(deriveJSON defaultOptions ''GameState)
+
+data Move   = ClearSquare Int
+            | FlagSquare Int
+            | Invalid
+            deriving (Eq, Show)
+
+play :: GameState -> Move -> GameState
+play game move
+        | checkForWin newGame   = Won
+        | otherwise             = newGame
+        where
+            newGame = makeMove game move
+
+checkForWin (GS board flagsLeft)    = checkForWin' board
+checkForWin Won                     = True
+checkForWin Lost                    = False
+
+coordToIndex :: GameState -> (Int, Int) -> Int
+coordToIndex (GS (Board dims _) _) coord = coordToIndex' dims coord
+
+coordToIndex' :: (Int, Int) -> (Int, Int) -> Int
+coordToIndex' (r, c) (i, j) = (i*c) + j
 
 
-data BoardState = Board (Int, Int) [(Int, Int)] [(Int, Int)] [(Int, Int)]
+makeMove :: GameState -> Move -> GameState
+makeMove game (ClearSquare i)   = clearSquare game i
+makeMove game (FlagSquare i)    = flagSquare game i
+makeMove game Invalid           = game
 
-play :: BoardState -> IO ()
-play board | gameOver board = putStrLn "Game Over!"
+clearSquare :: GameState -> Int -> GameState
+clearSquare (GS (Board (r, c) squares) flagsLeft) i
+        | prevSquare == Bomb        = Lost
+        | isClear prevSquare        = passGameState
+        | prevSquare == FlagB       = passGameState
+        | prevSquare == FlagE       = passGameState
+        | adjBombs == 0             = clearAdjSquares newGameState adjIndices
+        | otherwise                 = newGameState
+        where
+            board           = Board (r, c) squares
+            prevSquare      = squareAt board i
+            passGameState   = GS board flagsLeft
+            adjIndices      = adjI (r, c) i
+            adjBombs        = bombsInList board adjIndices
+            newSquare       = Clear adjBombs
+            newGameState    = GS (setSquare board i newSquare) flagsLeft
 
-play board = do
-    printBoard board
-    putStrLn "What is your move? f(i,j) / c(i,j)"
-    move <- getLine
-    if not (validMove move)
-        then do
-            putStrLn "That is not a valid move."
-            play board
-        else
-            play (makeMove board move)
-
-
-printBoard :: BoardState -> IO ()
-printBoard (Board dims bombs flags cleared) = do
-    putStrLn "Here is the board..."
-
-
-validMove :: String -> Bool
-validMove move  | len /= 6 = False
-                | action == 'f' = True
-                | action == 'c' = True
-                | otherwise = False
-                where
-                    action = head move
-                    len = length move
-
-
-makeMove :: BoardState -> String -> BoardState
-makeMove (Board dimensions bombs flags cleared) move
-            | action == 'f' = Board dimensions bombs (coord:flags) cleared
-            | action == 'c' = Board dimensions bombs flags (coord:cleared)
-            where
-                action = head move
-                coord = ((digitToInt (move!!2)), (digitToInt (move!!4)))
-
-
-gameOver :: BoardState -> Bool
-gameOver (Board _ bombs _ cleared)  | length (intersect bombs cleared) /= 0 = True
-                                    | otherwise = False
+clearAdjSquares :: GameState -> [Int] -> GameState
+clearAdjSquares game []     = game
+clearAdjSquares game (i:is) = clearAdjSquares (newGameState) is
+        where
+            newGameState = clearSquare game i
 
 
 
-makeBombList :: (Int, Int) -> Int -> [(Int, Int)]
-{-
-    Input:
-        A tuple with the number of rows and columns in the grid
-        The number of bomb coordinates to generate
+flagSquare :: GameState -> Int -> GameState
+flagSquare (GS board 0) i
+        | prevSquare == FlagB   = GS (setSquare board i Bomb) 1
+        | prevSquare == FlagE   = GS (setSquare board i Empty) 1
+        | otherwise             = GS board 0
+        where
+            prevSquare = squareAt board i
 
-    Output:
-        A list of bomb coordinates
--}
-makeBombList dimensions numBombs = genBombCoords dimensions numBombs []
+flagSquare (GS board flagsLeft) i
+        | prevSquare == Bomb    = GS (setSquare board i FlagB) (flagsLeft-1)
+        | prevSquare == Empty   = GS (setSquare board i FlagE) (flagsLeft-1)
+        | prevSquare == FlagB   = GS (setSquare board i Bomb) (flagsLeft+1)
+        | prevSquare == FlagE   = GS (setSquare board i Empty) (flagsLeft+1)
+        | otherwise             = GS board flagsLeft
+        where
+            prevSquare = squareAt board i
 
-genBombCoords :: (Int, Int) -> Int -> [(Int, Int)] -> [(Int, Int)]
-{-
-    Input:
-        A tuple with the number of rows and columns in the grid
-        The number of bombs left to generate
-        A list of the bombs so far
 
-    Output:
-        A list of bomb coordinates
--}
-genBombCoords (r, c) n bombsSoFar
-                            | numBombs >= n = take n bombsSoFar
-                            | otherwise = genBombCoords (r, c) n ( nub (newBombs ++ bombsSoFar) )
-                            where
-                                numBombs = length bombsSoFar
-                                g = mkStdGen numBombs
-                                max = (r*c) - 1
-                                newBombs = convertToCoords (take n (randomRs (0, max) g)) (r, c)
-
-convertToCoords :: [Int] -> (Int, Int) -> [(Int, Int)]
-{-
-    Input:
-        A list of numbers
-        A tuple containing the bounds of the grid
-
-    Output:
-        A list of tuples that are the coordinates the input list corresponds to
--}
-convertToCoords [] _ = []
-convertToCoords (x:xs) (r, c) = (i, j):(convertToCoords xs (r, c))
-                        where
-                            i = 1 + div x c
-                            j = 1 + rem x r
+gameStateToHtml Lost                    = h1 "No Game State"
+gameStateToHtml Won                     = h1 "No Game State"
+gameStateToHtml (GS board flagsLeft)    = H.div $ do
+    "Flags left: "
+    toHtml flagsLeft
+    br
+    boardToHtml board
