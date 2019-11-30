@@ -48,7 +48,7 @@ makeMove game Invalid           = game
 clearSquare :: GameState -> Int -> GameState
 clearSquare (GS (Board (r, c) squares) flagsLeft) i
         | prevSquare == Bomb        = Lost
-        | alreadyClear              = passGameState
+        | isClear prevSquare        = passGameState
         | prevSquare == FlagB       = passGameState
         | prevSquare == FlagE       = passGameState
         | adjBombs == 0             = clearAdjSquares newGameState adjIndices
@@ -57,7 +57,6 @@ clearSquare (GS (Board (r, c) squares) flagsLeft) i
             board           = Board (r, c) squares
             prevSquare      = squareAt board i
             passGameState   = GS board flagsLeft
-            alreadyClear    = any (prevSquare==) [(Clear 0), (Clear 1), (Clear 2), (Clear 3), (Clear 4), (Clear 5), (Clear 6), (Clear 7), (Clear 8)]
             adjIndices      = adjI (r, c) i
             adjBombs        = bombsInList board adjIndices
             newSquare       = Clear adjBombs
@@ -88,7 +87,7 @@ flagSquare (GS board flagsLeft) i
         where
             prevSquare = squareAt board i
 
--- gameStateToHtml :: GameState ->
+
 gameStateToHtml Lost                    = h1 "No Game State"
 gameStateToHtml Won                     = h1 "No Game State"
 gameStateToHtml (GS board flagsLeft)    = H.div $ do

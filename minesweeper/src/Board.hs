@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Board (Square (..), Board (..), boardToHtml, clearNum, bombsInList, adjI, subsetOfSquares, makeBoard, setSquare, squareAt, checkForWin') where
+module Board (Square (..), Board (..), boardToHtml, clearNum, isClear, bombsInList, adjI, subsetOfSquares, makeBoard, setSquare, squareAt, checkForWin') where
 
 import System.Random
 import Data.List
@@ -14,8 +14,8 @@ data Square = Bomb      -- a bomb is in the square
             | FlagB     -- a flag has been placed on a bomb
             | FlagE     -- a flag has been placed on an empty square
             | Clear Int -- the square has been cleared and has Int number of bombs around it
-            | Unknown   -- constructor for the bot
-            | Flag      -- constructor for the bot
+            | Unknown   -- constructor to hide detail from the bot
+            | Flag      -- constructor to hide detail from the bot
             deriving (Eq, Show)
 
 $(deriveJSON defaultOptions ''Square)
@@ -25,17 +25,14 @@ data Board = Board (Int, Int) [Square]
 
 $(deriveJSON defaultOptions ''Board)
 
-
--- boardToHtml :: Board ->
 boardToHtml (Board (r, c) squares) = table $ rowsToHtml (r, c) squares 0
 
--- rowsToHtml :: dimension squares currentIndex
 rowsToHtml (r, c) squares i | i == r*c  = return ()
                             | otherwise = do
                                             tr $ dataToHtml c squares i
                                             rowsToHtml (r, c) squares (i+c)
 
-dataToHtml c squares i  | i `mod` c == c-1 = s
+dataToHtml c squares i  | i `mod` c == c-1  = s
                         | otherwise         = do
                                                 s
                                                 dataToHtml c squares (i+1)
@@ -50,16 +47,14 @@ squareToHtml FlagB      = td ! class_ "flag" $ toHtml $ ("F" :: String)
 -- squareToHtml Bomb       = td ! class_ "bomb" $ toHtml $ ("B" :: String) -- for debugging
 squareToHtml _          = td ! class_ "empty" $ toHtml $ (" " :: String)
 
+isClear :: Square -> Bool
+isClear (Clear x)   = True
+isClear _           = False
 
 clearNum :: Square -> Int
 clearNum (Clear x)  = x
 clearNum _          = 9 -- invalid
 
-
-{-
-    Takes in a board and an index
-    Outputs the number of bombs touching the square at that index
--}
 bombsInList :: Board -> [Int] -> Int
 bombsInList (Board (r, c) squares) indices = length (filter (\s -> s == Bomb || s == FlagB) adjacentSquares)
         where
@@ -90,23 +85,14 @@ subsetOfSquares :: [Square] -> [Int] -> [Square]
 subsetOfSquares _ []            = []
 subsetOfSquares squares (i:is)  = (squares!!i):(subsetOfSquares squares is)
 
-
 squareAt :: Board -> Int -> Square
 squareAt (Board dims squares) i = squares!!i
 
-{-
-    Takes in a board, an integer, and a new square
-    Outputs a new board where the square at i is the newSquare
--}
 setSquare :: Board -> Int -> Square -> Board
 setSquare (Board dims squares) i newSquare =
         let (ys,zs) = splitAt i squares in
             Board dims (ys ++ [newSquare] ++ tail zs)
 
-{-
-    Takes in the dimensions and a number of bombs
-    Outputs a board with the bombs randomly placed on it
--}
 makeBoard :: (Int, Int) -> Int -> Board
 makeBoard dims numBombs = Board dims squares
             where

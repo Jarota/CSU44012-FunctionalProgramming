@@ -41,8 +41,8 @@ autoMove' (Board (r, c) squares) i
             err         = length squares
             adjIndices  = adjI (r, c) i
             nextUnknown = findUnknown squares adjIndices
-            oneOneIndex = basicPattern (Board (r, c) squares) i 1
-            oneTwoIndex = basicPattern (Board (r, c) squares) i 2
+            oneOneIndex = oneOne (Board (r, c) squares) i
+            oneTwoIndex = oneTwo (Board (r, c) squares) i
 
 
 findUnknown' :: Board -> Int
@@ -71,7 +71,12 @@ obviousClears squares i is
             us  = (length $ filter (\j -> squares!!j == Unknown) is)
             fs  = (length $ filter (\j -> squares!!j == Flag) is)
 
--- Check for the one-one pattern
+oneOne :: Board -> Int -> Int
+basicPattern (Board (r, c) squares) i 1
+
+oneTwo :: Board -> Int -> Int
+basicPattern (Board (r, c) squares) i 2
+
 basicPattern :: Board -> Int -> Int -> Int
 basicPattern (Board (r, c) squares) i k
         | not isBasic       = err
@@ -85,6 +90,9 @@ basicPattern (Board (r, c) squares) i k
             is              = adjI (r, c) i
             fs              = getFlags squares is
             n               = clearNum (squares!!i)
+            {- the isBasic boolean below is written so that the
+                bot reduces down patterns that don't initially look
+                like one-one or one-two -}
             isBasic         = n - (length fs) == k
             us              = getUnknowns squares is
             twoUsAdj        = twoAdj us c
